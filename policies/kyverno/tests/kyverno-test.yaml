@@ -1,0 +1,21 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: school-policies
+policies:
+  - ../rules/school-restrict-images.yaml
+  - ../rules/school-pod-security.yaml
+  - ../rules/school-resources-and-labels.yaml
+resources:
+  - fixtures.yaml
+results:
+  - {policy: school-restrict-images, isValidatingPolicy: true, kind: Pod, resources: [good], result: pass}
+  - {policy: school-restrict-images, isValidatingPolicy: true, kind: Pod, resources: [bad-tag], result: fail}
+  - {policy: school-restrict-images, isValidatingPolicy: true, kind: Pod, resources: [bad-registry], result: fail}
+  - {policy: school-pod-security, isValidatingPolicy: true, kind: Pod, resources: [good], result: pass}
+  - {policy: school-pod-security, isValidatingPolicy: true, kind: Pod, resources: [bad-root], result: fail}
+  - {policy: school-pod-security, isValidatingPolicy: true, kind: Pod, resources: [bad-privileged], result: fail}
+  - {policy: school-pod-security, isValidatingPolicy: true, kind: Pod, resources: [bad-host-network], result: fail}
+  - {policy: school-resources-and-labels, isValidatingPolicy: true, kind: Pod, resources: [good], result: pass}
+  - {policy: school-resources-and-labels, isValidatingPolicy: true, kind: Pod, resources: [bad-no-resources], result: fail}
+  - {policy: school-resources-and-labels, isValidatingPolicy: true, kind: Pod, resources: [bad-no-labels], result: fail}

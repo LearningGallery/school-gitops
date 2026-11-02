@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: school
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements:
+          - {env: dev, autoSync: "true"}
+          - {env: staging, autoSync: "true"}
+          # Production is never synced automatically: a human clicks Sync (or merges AND approves the sync).
+          - {env: production, autoSync: "false"}
+  template:
+    metadata:
+      name: "school-{{ .env }}"
+      labels:
+        school/environment: "{{ .env }}"
+    spec:
+      project: school
+      source:
+        repoURL: https://github.com/<YOUR_ORG>/school-gitops.git
+        targetRevision: main
+        path: "overlays/{{ .env }}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "school-{{ .env }}"
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=false
+          - ServerSideApply=true
+        retry:
+          limit: 3
+          backoff: {duration: 10s, factor: 2, maxDuration: 3m}
+  templatePatch: |
+    {{- if eq .autoSync "true" }}
+    spec:
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+    {{- end }}

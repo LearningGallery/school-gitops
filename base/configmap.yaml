@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: school-config
+  labels:
+    app.kubernetes.io/part-of: school
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  NODE_ENV: production
+  LOG_LEVEL: info
+  JWT_TTL_SECONDS: "3600"
+  SHUTDOWN_DELAY_MS: "5000"
+  # Feature flags (module 28): deploy and release are separate events. Flip in Git, not in the image.
+  FLAG_GRADE_LETTERS: "false"

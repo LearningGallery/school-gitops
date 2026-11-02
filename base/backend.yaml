@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: school-backend
+  labels:
+    app.kubernetes.io/name: school-backend
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: school
+  annotations:
+    argocd.argoproj.io/sync-wave: "2" # after the secret (0) and the migration (1)
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: school-backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: school-backend
+        app.kubernetes.io/component: api
+        app.kubernetes.io/part-of: school
+    spec:
+      serviceAccountName: school-backend
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30 # must exceed SHUTDOWN_DELAY_MS plus in-flight request time
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: school-backend
+      containers:
+        - name: backend
+          image: school-backend # replaced with registry + digest by each overlay (images:)
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: school-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: school-app
+                  key: DATABASE_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: school-app
+                  key: JWT_SECRET
+          startupProbe:
+            httpGet: {path: /startupz, port: http}
+            periodSeconds: 3
+            failureThreshold: 20
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 192Mi}
+            limits: {memory: 384Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: school-backend
+  labels:
+    app.kubernetes.io/name: school-backend
+    app.kubernetes.io/part-of: school
+  annotations:
+    alb.ingress.kubernetes.io/healthcheck-path: /readyz
+spec:
+  selector:
+    app.kubernetes.io/name: school-backend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

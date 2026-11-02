@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: school-frontend
+  labels:
+    app.kubernetes.io/name: school-frontend
+    app.kubernetes.io/component: web
+    app.kubernetes.io/part-of: school
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: school-frontend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: school-frontend
+        app.kubernetes.io/component: web
+        app.kubernetes.io/part-of: school
+    spec:
+      serviceAccountName: school-frontend
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: school-frontend
+      containers:
+        - name: frontend
+          image: school-frontend # replaced with registry + digest by each overlay (images:)
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet: {path: /nginx-health, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /nginx-health, port: http}
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 25m, memory: 32Mi}
+            limits: {memory: 96Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: school-frontend
+  labels:
+    app.kubernetes.io/name: school-frontend
+    app.kubernetes.io/part-of: school
+  annotations:
+    alb.ingress.kubernetes.io/healthcheck-path: /nginx-health
+spec:
+  selector:
+    app.kubernetes.io/name: school-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
