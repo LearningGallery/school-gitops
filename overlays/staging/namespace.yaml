@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: school-staging
+  labels:
+    # Kubernetes rejects pods that break the restricted profile, whatever the manifests say.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    app.kubernetes.io/part-of: school
+    school/environment: staging

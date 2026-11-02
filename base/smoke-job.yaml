@@ -1,0 +1,61 @@
+# Post-deploy verification (module 17): after everything is synced, ask the system a real question through its
+# Services. A failure marks the sync failed and the application Degraded; it does not roll anything back by itself.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: school-smoke
+  labels:
+    app.kubernetes.io/name: school-smoke
+    app.kubernetes.io/part-of: school
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 180
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: school-smoke
+        app.kubernetes.io/part-of: school
+    spec:
+      restartPolicy: Never
+      serviceAccountName: school-backend
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: smoke
+          image: school-backend
+          command:
+            - node
+            - -e
+            - |
+              const checks = [
+                ["backend ready", "http://school-backend/readyz"],
+                ["frontend serves the app", "http://school-frontend/"],
+                ["API rejects anonymous requests", "http://school-backend/api/students", 401],
+              ];
+              (async () => {
+                for (const [name, url, want = 200] of checks) {
+                  const r = await fetch(url);
+                  if (r.status !== want) { console.error(`FAIL ${name}: ${url} -> ${r.status}, wanted ${want}`); process.exit(1); }
+                  console.log(`ok   ${name}`);
+                }
+              })().catch((e) => { console.error(e); process.exit(1); });
+          resources:
+            requests: {cpu: 25m, memory: 64Mi}
+            limits: {memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault

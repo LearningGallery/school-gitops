@@ -1,0 +1,35 @@
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: school-resources-and-labels
+  annotations:
+    policies.kyverno.io/title: Requests, memory limits and ownership labels
+    policies.kyverno.io/description: >-
+      Pods without requests starve their neighbours; pods without a memory limit can take the node down. CPU limits are deliberately not required because they cause throttling. Labels tie a workload to its owner.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+  autogen:
+    podControllers:
+      controllers: [deployments, jobs]
+  variables:
+    - name: containers
+      expression: >-
+        object.spec.containers + (has(object.spec.initContainers) ? object.spec.initContainers : [])
+  validations:
+    - expression: >-
+        variables.containers.all(c, c.?resources.?requests.?cpu.hasValue() && c.?resources.?requests.?memory.hasValue() &&
+          c.?resources.?limits.?memory.hasValue())
+      message: "Set cpu and memory requests and a memory limit on every container."
+    - expression: >-
+        object.metadata.?labels.orValue({}).exists_one(k, k == 'app.kubernetes.io/name') &&
+        object.metadata.?labels.orValue({}).exists_one(k, k == 'app.kubernetes.io/part-of')
+      message: "Pods need the labels app.kubernetes.io/name and app.kubernetes.io/part-of."

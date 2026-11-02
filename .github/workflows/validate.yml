@@ -1,0 +1,26 @@
+# Every change to desired state is checked before Argo CD can see it: render, schema-validate, policy-test.
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: scripts/validate.sh # kubectl and docker are preinstalled on the runner
+
+  # The single check the branch ruleset requires.
+  gate:
+    if: always()
+    needs: [validate]
+    runs-on: ubuntu-24.04
+    steps:
+      - run: test "${{ needs.validate.result }}" = "success"

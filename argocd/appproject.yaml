@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: school
+  namespace: argocd
+spec:
+  description: School Management System, all environments
+  sourceRepos:
+    - https://github.com/<YOUR_ORG>/school-gitops.git
+  destinations:
+    - {server: https://kubernetes.default.svc, namespace: school-dev}
+    - {server: https://kubernetes.default.svc, namespace: school-staging}
+    - {server: https://kubernetes.default.svc, namespace: school-production}
+  # Only Namespaces may be created at cluster scope. An application cannot grant itself cluster-admin.
+  clusterResourceWhitelist:
+    - {group: "", kind: Namespace}
+  syncWindows:
+    # Production changes only on weekdays 08:00 to 17:00 UTC; manual syncs are still allowed for emergencies.
+    - kind: allow
+      schedule: "0 8 * * 1-5"
+      duration: 9h
+      applications: ["school-production"]
+      manualSync: true

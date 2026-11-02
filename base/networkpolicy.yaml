@@ -1,0 +1,53 @@
+# Default deny, then open exactly what the app needs. Needs a CNI that enforces NetworkPolicy
+# (the VPC CNI does when network policy support is enabled on the add-on).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-alb-and-metrics
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: school
+  policyTypes: [Ingress]
+  ingress:
+    # The ALB targets pod IPs directly (target-type: ip), so traffic arrives from VPC addresses.
+    # The load balancer's security group is the real boundary; this only limits the port.
+    - ports:
+        - {protocol: TCP, port: 8080}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-to-database
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: api
+  policyTypes: [Egress]
+  egress:
+    - ports:
+        - {protocol: TCP, port: 5432}
