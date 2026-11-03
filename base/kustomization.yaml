@@ -8,6 +8,8 @@ resources:
   - smoke-job.yaml
   - backend.yaml
   - frontend.yaml
+  - analysis.yaml
+  - podmonitor.yaml
   - ingress.yaml
   - pdb.yaml
   - networkpolicy.yaml

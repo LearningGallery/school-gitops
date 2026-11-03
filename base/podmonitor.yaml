@@ -1,0 +1,18 @@
+# Scrape pods directly (not Services): stable and canary Services select the same pods during a rollout,
+# and scraping through both would double-count every series.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: school-backend
+  labels:
+    app.kubernetes.io/part-of: school
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: school-backend
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+  podTargetLabels:
+    - rollouts-pod-template-hash # lets queries (and the AnalysisTemplate) separate canary from stable

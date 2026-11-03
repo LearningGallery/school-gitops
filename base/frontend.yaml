@@ -1,5 +1,5 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: school-frontend
   labels:
@@ -15,10 +15,13 @@ spec:
     matchLabels:
       app.kubernetes.io/name: school-frontend
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
+    blueGreen:
+      # The new version (green) runs in full next to the live one (blue) and is reachable on the preview Service.
+      # Promotion flips the active Service's selector; switching back is the same flip, within the scale-down delay.
+      activeService: school-frontend
+      previewService: school-frontend-preview
+      autoPromotionEnabled: false # overlays turn this on for dev and staging
+      scaleDownDelaySeconds: 600 # the old version stays up this long: the instant-rollback window
   template:
     metadata:
       labels:
@@ -80,6 +83,21 @@ metadata:
     app.kubernetes.io/part-of: school
   annotations:
     alb.ingress.kubernetes.io/healthcheck-path: /nginx-health
+spec:
+  selector:
+    app.kubernetes.io/name: school-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: school-frontend-preview
+  labels:
+    app.kubernetes.io/name: school-frontend
+    app.kubernetes.io/part-of: school
 spec:
   selector:
     app.kubernetes.io/name: school-frontend

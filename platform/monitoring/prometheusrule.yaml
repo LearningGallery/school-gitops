@@ -1,0 +1,77 @@
+# SLO: 99.5% of API requests succeed (error budget 0.5%). Alerts follow the multi-window, multi-burn-rate pattern:
+# a fast burn pages a human; a slow burn opens a ticket. Both windows must agree, so a spike that already ended is ignored.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: school
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: school
+spec:
+  groups:
+    - name: school-slo
+      rules:
+        - record: school:http_error_ratio:rate5m
+          expr: sum by (namespace) (rate(http_requests_total{namespace=~"school-.*",status=~"5.."}[5m])) / sum by (namespace) (rate(http_requests_total{namespace=~"school-.*"}[5m]))
+        - record: school:http_error_ratio:rate30m
+          expr: sum by (namespace) (rate(http_requests_total{namespace=~"school-.*",status=~"5.."}[30m])) / sum by (namespace) (rate(http_requests_total{namespace=~"school-.*"}[30m]))
+        - record: school:http_error_ratio:rate1h
+          expr: sum by (namespace) (rate(http_requests_total{namespace=~"school-.*",status=~"5.."}[1h])) / sum by (namespace) (rate(http_requests_total{namespace=~"school-.*"}[1h]))
+        - record: school:http_error_ratio:rate6h
+          expr: sum by (namespace) (rate(http_requests_total{namespace=~"school-.*",status=~"5.."}[6h])) / sum by (namespace) (rate(http_requests_total{namespace=~"school-.*"}[6h]))
+        - alert: SchoolErrorBudgetFastBurn
+          expr: school:http_error_ratio:rate1h > (14.4 * 0.005) and school:http_error_ratio:rate5m > (14.4 * 0.005)
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.namespace }}: burning the 30-day error budget 14x too fast"
+            description: "More than 7.2% of API requests failed over the last hour and are still failing. At this rate the monthly budget is gone in about two days."
+            runbook_url: "https://github.com/<YOUR_ORG>/devops-zero-to-hero/blob/main/docs/27-alerting/runbooks/error-budget-burn.md"
+        - alert: SchoolErrorBudgetSlowBurn
+          expr: school:http_error_ratio:rate6h > (6 * 0.005) and school:http_error_ratio:rate30m > (6 * 0.005)
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}: error budget burning 6x too fast"
+            description: "A steady elevated error rate over six hours. Open a ticket; this does not need to wake anyone."
+            runbook_url: "https://github.com/<YOUR_ORG>/devops-zero-to-hero/blob/main/docs/27-alerting/runbooks/error-budget-burn.md"
+    - name: school-health
+      rules:
+        - alert: SchoolApiLatencyHigh
+          expr: histogram_quantile(0.95, sum by (namespace, le) (rate(http_request_duration_seconds_bucket{namespace=~"school-.*"}[5m]))) > 0.5
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}: API p95 latency above 500 ms"
+            description: "Check database load, recent rollouts and the saturation panels on the dashboard."
+            runbook_url: "https://github.com/<YOUR_ORG>/devops-zero-to-hero/blob/main/docs/27-alerting/runbooks/latency.md"
+        - alert: SchoolEnrollmentFailuresHigh
+          expr: sum by (namespace) (increase(enrollment_failures_total{namespace=~"school-.*"}[10m])) > 20
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}: enrolment failures are elevated"
+            description: "The API is up but students cannot be enrolled: a business-level failure that error rates may miss."
+            runbook_url: "https://github.com/<YOUR_ORG>/devops-zero-to-hero/blob/main/docs/27-alerting/runbooks/enrollment-failures.md"
+        - alert: SchoolBackendDown
+          expr: sum by (namespace) (up{namespace=~"school-.*",pod=~"school-backend.*"}) == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.namespace }}: no backend pod is being scraped"
+            description: "Either every backend pod is down or monitoring has lost them. Check pods first, then the PodMonitor."
+            runbook_url: "https://github.com/<YOUR_ORG>/devops-zero-to-hero/blob/main/docs/27-alerting/runbooks/backend-down.md"
+        - alert: SchoolPodCrashLooping
+          expr: increase(kube_pod_container_status_restarts_total{namespace=~"school-.*"}[15m]) > 3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }}: container restarting repeatedly"
+            description: "Look at the previous container logs; a recent rollout or a missing secret is the usual cause."
+            runbook_url: "https://github.com/<YOUR_ORG>/devops-zero-to-hero/blob/main/docs/27-alerting/runbooks/backend-down.md"

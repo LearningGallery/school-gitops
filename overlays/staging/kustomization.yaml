@@ -18,12 +18,12 @@ images:
     newName: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/school-frontend
     digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
 patches:
-  - target: {kind: Deployment, name: school-backend}
+  - target: {kind: Rollout, name: school-backend}
     patch: |-
       - op: replace
         path: /spec/replicas
         value: 2
-  - target: {kind: Deployment, name: school-frontend}
+  - target: {kind: Rollout, name: school-frontend}
     patch: |-
       - op: replace
         path: /spec/replicas
@@ -38,6 +38,16 @@ patches:
       - op: replace
         path: /data/FLAG_GRADE_LETTERS
         value: "false"
+  - target: {kind: Rollout, name: school-backend}
+    patch: |-
+      - op: replace
+        path: /spec/strategy/canary/analysis/args/0/value
+        value: school-staging
+  - target: {kind: Rollout, name: school-frontend}
+    patch: |-
+      - op: replace
+        path: /spec/strategy/blueGreen/autoPromotionEnabled
+        value: true
   - target: {kind: ExternalSecret, name: school-app}
     patch: |-
       - op: replace

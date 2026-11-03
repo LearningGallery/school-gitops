@@ -1,5 +1,5 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: school-backend
   labels:
@@ -15,10 +15,35 @@ spec:
     matchLabels:
       app.kubernetes.io/name: school-backend
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
+    canary:
+      # Who does what (module 23): this controller decides the weights; the AWS Load Balancer Controller turns the
+      # Ingress it edits into ALB weighted target groups; the ALB routes. stableService must be the Ingress backend.
+      stableService: school-backend
+      canaryService: school-backend-canary
+      maxSurge: 1 # capacity never drops while pods are replaced
       maxUnavailable: 0
-      maxSurge: 1
+      trafficRouting:
+        alb:
+          ingress: school
+          servicePort: 80
+      # Judged continuously from step 1 on (module 24). A failed analysis aborts and returns all traffic to stable.
+      analysis:
+        startingStep: 1
+        templates:
+          - templateName: school-backend-health
+        args:
+          - name: namespace
+            value: NAMESPACE # replaced per environment by the overlay
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Latest
+      steps:
+        - setWeight: 10
+        - pause: {duration: 2m}
+        - setWeight: 25
+        - pause: {duration: 5m}
+        - setWeight: 50
+        - pause: {duration: 5m}
   template:
     metadata:
       labels:
@@ -92,10 +117,28 @@ spec:
         - name: tmp
           emptyDir: {}
 ---
+# Stable Service: the Ingress backend. The Rollouts controller manages its selector, so Argo CD ignores it (ApplicationSet).
 apiVersion: v1
 kind: Service
 metadata:
   name: school-backend
+  labels:
+    app.kubernetes.io/name: school-backend
+    app.kubernetes.io/part-of: school
+  annotations:
+    alb.ingress.kubernetes.io/healthcheck-path: /readyz
+spec:
+  selector:
+    app.kubernetes.io/name: school-backend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: school-backend-canary
   labels:
     app.kubernetes.io/name: school-backend
     app.kubernetes.io/part-of: school
