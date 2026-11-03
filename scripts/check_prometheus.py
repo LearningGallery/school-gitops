@@ -6,6 +6,7 @@
 
 No Prometheus server and no cluster. Needs docker (pinned promtool image) and PyYAML.
 """
+import os
 import re
 import subprocess
 import sys
@@ -21,7 +22,8 @@ NAMES = {"error-ratio": "analysis:error_ratio", "latency-p95-seconds": "analysis
 
 
 def promtool(work, *args):
-    cmd = ["docker", "run", "--rm", "--entrypoint", "promtool", "-v", f"{work}:/work:ro", PROMTOOL, *args]
+    # Run as the caller: the temp dir is private (0700), and the image's default user could not read it on Linux runners.
+    cmd = ["docker", "run", "--rm", "--user", f"{os.getuid()}:{os.getgid()}", "--entrypoint", "promtool", "-v", f"{work}:/work:ro", PROMTOOL, *args]
     r = subprocess.run(cmd, capture_output=True, text=True)
     print((r.stdout + r.stderr).strip())
     return r.returncode
