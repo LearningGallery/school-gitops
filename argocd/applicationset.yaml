@@ -27,10 +27,23 @@ spec:
       destination:
         server: https://kubernetes.default.svc
         namespace: "school-{{ .env }}"
+      # Argo Rollouts rewrites these at run time (module 23). Without this, selfHeal would fight the rollout
+      # and revert the canary weights.
+      ignoreDifferences:
+        - group: ""
+          kind: Service
+          jqPathExpressions:
+            - .spec.selector
+        - group: networking.k8s.io
+          kind: Ingress
+          jqPathExpressions:
+            - .metadata.annotations["alb.ingress.kubernetes.io/actions.school-backend"]
+            - .metadata.annotations["rollouts.argoproj.io/managed-alb-actions"]
       syncPolicy:
         syncOptions:
           - CreateNamespace=false
           - ServerSideApply=true
+          - RespectIgnoreDifferences=true
         retry:
           limit: 3
           backoff: {duration: 10s, factor: 2, maxDuration: 3m}

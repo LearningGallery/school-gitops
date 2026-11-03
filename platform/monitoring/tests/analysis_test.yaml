@@ -1,0 +1,58 @@
+# The AnalysisTemplate queries (generated into /work/analysis-rules.yaml with sample arguments) must tell a bad canary
+# from a good stable pod. promtool evaluates the real PromQL against synthetic series.
+rule_files:
+  - /work/analysis-rules.yaml
+evaluation_interval: 1m
+tests:
+  - name: a canary returning 25% errors is separated from a healthy stable version
+    interval: 1m
+    input_series:
+      - series: 'http_requests_total{namespace="school-staging",status="200",rollouts_pod_template_hash="canary1"}'
+        values: "0+75x20"
+      - series: 'http_requests_total{namespace="school-staging",status="500",rollouts_pod_template_hash="canary1"}'
+        values: "0+25x20"
+      - series: 'http_requests_total{namespace="school-staging",status="200",rollouts_pod_template_hash="stable1"}'
+        values: "0+1000x20"
+    promql_expr_test:
+      - expr: analysis:error_ratio
+        eval_time: 15m
+        exp_samples:
+          - labels: '{__name__="analysis:error_ratio"}'
+            value: 0.25
+  - name: a slow canary has a p95 near 950 ms
+    interval: 1m
+    input_series:
+      - series: 'http_request_duration_seconds_bucket{namespace="school-staging",rollouts_pod_template_hash="canary1",le="0.5"}'
+        values: "0+50x20"
+      - series: 'http_request_duration_seconds_bucket{namespace="school-staging",rollouts_pod_template_hash="canary1",le="1"}'
+        values: "0+100x20"
+      - series: 'http_request_duration_seconds_bucket{namespace="school-staging",rollouts_pod_template_hash="canary1",le="+Inf"}'
+        values: "0+100x20"
+    promql_expr_test:
+      - expr: analysis:latency_p95_seconds
+        eval_time: 15m
+        exp_samples:
+          - labels: '{__name__="analysis:latency_p95_seconds"}'
+            value: 0.95
+  - name: enrolment failures are counted for the canary only
+    interval: 1m
+    input_series:
+      - series: 'enrollment_failures_total{namespace="school-staging",rollouts_pod_template_hash="canary1"}'
+        values: "0+3x20"
+      - series: 'enrollment_failures_total{namespace="school-staging",rollouts_pod_template_hash="stable1"}'
+        values: "0+50x20"
+    promql_expr_test:
+      - expr: analysis:enrollment_failures
+        eval_time: 15m
+        exp_samples:
+          - labels: '{__name__="analysis:enrollment_failures"}'
+            value: 15
+  - name: a canary that has had no traffic yet returns nothing (the template treats that as not failing)
+    interval: 1m
+    input_series:
+      - series: 'http_requests_total{namespace="school-staging",status="200",rollouts_pod_template_hash="stable1"}'
+        values: "0+1000x20"
+    promql_expr_test:
+      - expr: analysis:error_ratio
+        eval_time: 15m
+        exp_samples: []

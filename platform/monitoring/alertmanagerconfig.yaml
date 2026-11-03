@@ -1,0 +1,43 @@
+# Routing (module 27): critical pages a human, warnings go to a channel, nothing goes to nobody.
+# Webhook URLs and routing keys come from AWS Secrets Manager through External Secrets, never from Git.
+# Lives in the Alertmanager's own namespace; the strategy in school-infra lets it see alerts from every namespace.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: school
+  namespace: monitoring
+  labels:
+    alertmanagerConfig: school
+spec:
+  route:
+    receiver: school-warnings
+    groupBy: [alertname, namespace]
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    routes:
+      - receiver: school-pager
+        matchers:
+          - {name: severity, value: critical, matchType: "="}
+        repeatInterval: 1h
+  receivers:
+    - name: school-pager
+      pagerdutyConfigs:
+        - routingKey:
+            name: school-alerting
+            key: pagerduty_routing_key
+          sendResolved: true
+    - name: school-warnings
+      slackConfigs:
+        - apiURL:
+            name: school-alerting
+            key: slack_webhook_url
+          channel: "#school-alerts"
+          sendResolved: true
+  inhibitRules:
+    # While the pager is already firing for a namespace, do not also send its warnings.
+    - sourceMatch:
+        - {name: severity, value: critical, matchType: "="}
+      targetMatch:
+        - {name: severity, value: warning, matchType: "="}
+      equal: [namespace]

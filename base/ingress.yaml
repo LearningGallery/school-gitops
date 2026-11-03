@@ -23,7 +23,8 @@ spec:
           - path: /api
             pathType: Prefix
             backend:
-              service: {name: school-backend, port: {name: http}}
+              # use-annotation: the Rollouts controller writes the weighted forward action for this Service name
+              service: {name: school-backend, port: {name: use-annotation}}
           - path: /
             pathType: Prefix
             backend:

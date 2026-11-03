@@ -7,4 +7,6 @@ metadata:
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/enforce-version: latest
     app.kubernetes.io/part-of: school
+    # The AWS Load Balancer Controller adds a readiness gate so a pod is not 'ready' until the ALB reports it healthy.
+    elbv2.k8s.aws/pod-readiness-gate-inject: enabled
     school/environment: staging
