@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Self-check for set_image.py: updates exactly the two digests, rejects tags, touches nothing else."""
+import re
 import subprocess
 import sys
 import tempfile
@@ -17,7 +18,9 @@ def run(root, *args):
 with tempfile.TemporaryDirectory() as t:
     root = Path(t)
     (root / "overlays/dev").mkdir(parents=True)
-    src = (HERE.parent / "overlays/dev/kustomization.yaml").read_text()
+    # The overlay holds real digests after the first promotion. Normalise them to placeholders so this test checks
+    # the script, not whichever release happens to be deployed.
+    src = re.sub(r"digest: sha256:[0-9a-f]{64}", f"digest: {OLD}", (HERE.parent / "overlays/dev/kustomization.yaml").read_text())
     k = root / "overlays/dev/kustomization.yaml"
     k.write_text(src)
 
