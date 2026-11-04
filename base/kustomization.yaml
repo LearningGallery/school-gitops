@@ -1,6 +1,14 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+# No name hash: kustomize does not rewrite ConfigMap names inside Argo Rollouts, so a hashed name would not match the
+# volume reference. Trade-off: changing these files does not restart pods by itself (roll them when you change one).
+generatorOptions:
+  disableNameSuffixHash: true
+
 configMapGenerator:
+  - name: school-frontend-nginx
+    files:
+      - default.conf=nginx/default.conf
   - name: rds-ca-bundle
     files:
       - rds-ca/global-bundle.pem
