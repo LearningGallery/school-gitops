@@ -1,6 +1,7 @@
 # Admission-time proof that an image was built by OUR release workflow (module 11). Promotion already ran
 # `gh attestation verify`; this repeats the check where it cannot be skipped: at the cluster door.
 # NOT exercised offline: it needs a registry and a transparency log. Start with validationActions: [Audit].
+# Attestor names are CEL identifiers: a hyphen (release-workflow) is read as subtraction and Kyverno rejects the policy.
 # Caveat: attestations from PRIVATE repositories are signed under GitHub's own trust root, not the public
 # Sigstore instance, so the attestor below needs adjusting for private repos (see module 15).
 apiVersion: policies.kyverno.io/v1
@@ -24,7 +25,7 @@ spec:
   matchImageReferences:
     - glob: "*.dkr.ecr.*.amazonaws.com/school-*"
   attestors:
-    - name: release-workflow
+    - name: release_workflow
       cosign:
         keyless:
           identities:
@@ -38,5 +39,5 @@ spec:
         type: https://slsa.dev/provenance/v1
   validations:
     - expression: >-
-        images.containers.map(image, verifyAttestationSignatures(image, attestations.provenance, [attestors.release-workflow])).all(e, e > 0)
+        images.containers.map(image, verifyAttestationSignatures(image, attestations.provenance, [attestors.release_workflow])).all(e, e > 0)
       message: "Image has no valid provenance attestation from the release workflow."
