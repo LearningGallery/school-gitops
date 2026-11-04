@@ -13,10 +13,10 @@ labels:
 images:
   - name: school-backend
     newName: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/school-backend
-    digest: sha256:0ae4384e2dd3c0255137993595ecafb6cef195af35cacb746c893420cb324d10
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
   - name: school-frontend
     newName: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/school-frontend
-    digest: sha256:184b41db258e74e596df221b810d0bc9112a9684d3037a858a49afa3c60625f1
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
 patches:
   - target: {kind: Rollout, name: school-backend}
     patch: |-
