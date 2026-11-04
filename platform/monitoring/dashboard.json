@@ -34,8 +34,8 @@
         "refresh": 2,
         "includeAll": false,
         "current": {
-          "text": "school-production",
-          "value": "school-production"
+          "text": "school-staging",
+          "value": "school-staging"
         }
       }
     ]

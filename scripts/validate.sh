@@ -19,7 +19,7 @@ conform() { docker run --rm -i "$KUBECONFORM" -strict -summary -kubernetes-versi
 
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 
-for env in dev staging production; do
+for env in dev staging; do
   echo "== overlay: $env"
   kubectl kustomize "overlays/$env" > "$tmp/$env.yaml"
   conform < "$tmp/$env.yaml"
@@ -34,7 +34,7 @@ echo "== kyverno: policy tests (good and bad fixtures)"
 docker run --rm -v "$PWD/policies/kyverno:/p:ro" "$KYVERNO" test /p/tests
 
 echo "== kyverno: rendered environments against the policies (Jobs directly, Rollouts as the Pods they create)"
-for env in dev staging production; do
+for env in dev staging; do
   $PY scripts/rollout_pods.py < "$tmp/$env.yaml" > "$tmp/$env-pods.yaml"
   cat "$tmp/$env.yaml" > "$tmp/$env-all.yaml"; echo "---" >> "$tmp/$env-all.yaml"; cat "$tmp/$env-pods.yaml" >> "$tmp/$env-all.yaml"
   docker run --rm -v "$PWD/policies/kyverno/rules:/rules:ro" -v "$tmp/$env-all.yaml:/r.yaml:ro" "$KYVERNO" apply \

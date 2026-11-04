@@ -4,9 +4,9 @@ Desired state for the School Management System. **Argo CD watches this repositor
 
 ```text
 apps/root.yaml                  the one object applied by hand: app of apps
-argocd/                         AppProject, ApplicationSet (dev, staging, production), platform Applications
+argocd/                         AppProject, ApplicationSet (dev, staging), platform Applications
 base/                           every Kubernetes object once (Deployments, Services, Ingress, ExternalSecret, migration + smoke Jobs)
-overlays/{dev,staging,production}/   what differs: namespace, replicas, host, flags, secret names, image digests
+overlays/{dev,staging}/   what differs: namespace, replicas, host, flags, secret names, image digests
 platform/external-secrets/      ClusterSecretStore (no credentials: EKS Pod Identity)
 policies/kyverno/               admission policies (CEL) with unit tests
 scripts/                        validate.sh (offline checks), set_image.py (the only promotion edit)
