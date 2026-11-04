@@ -21,7 +21,7 @@ def set_digest(text, image, digest):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("env", choices=["dev", "staging", "production"])
+    ap.add_argument("env", choices=["dev", "staging"])
     ap.add_argument("--backend", required=True)
     ap.add_argument("--frontend", required=True)
     ap.add_argument("--root", default=Path(__file__).resolve().parent.parent, type=Path)

@@ -8,7 +8,7 @@ labels:
   - pairs:
       school/environment: staging
     includeSelectors: false
-# Build once, deploy many: the SAME digests move dev -> staging -> production. Only a promotion pull request edits these.
+# Build once, deploy many: the SAME digests move dev -> staging. Only a promotion pull request edits these.
 # The all-zero digests are placeholders; scripts/set_image.py writes real ones.
 images:
   - name: school-backend

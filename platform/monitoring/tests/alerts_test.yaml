@@ -6,25 +6,25 @@ tests:
   - name: fast burn pages when 10% of requests fail for over an hour
     interval: 1m
     input_series:
-      - series: 'http_requests_total{namespace="school-production",status="200",pod="school-backend-a"}'
+      - series: 'http_requests_total{namespace="school-staging",status="200",pod="school-backend-a"}'
         values: "0+900x120"
-      - series: 'http_requests_total{namespace="school-production",status="500",pod="school-backend-a"}'
+      - series: 'http_requests_total{namespace="school-staging",status="500",pod="school-backend-a"}'
         values: "0+100x120"
     alert_rule_test:
       - eval_time: 75m
         alertname: SchoolErrorBudgetFastBurn
         exp_alerts:
-          - exp_labels: {severity: critical, namespace: school-production}
+          - exp_labels: {severity: critical, namespace: school-staging}
             exp_annotations:
-              summary: "school-production: burning the 30-day error budget 14x too fast"
+              summary: "school-staging: burning the 30-day error budget 14x too fast"
               description: "More than 7.2% of API requests failed over the last hour and are still failing. At this rate the monthly budget is gone in about two days."
               runbook_url: "https://github.com/<YOUR_ORG>/devops-zero-to-hero/blob/main/docs/27-alerting/runbooks/error-budget-burn.md"
   - name: a healthy service (0.1% errors) pages nobody
     interval: 1m
     input_series:
-      - series: 'http_requests_total{namespace="school-production",status="200",pod="school-backend-a"}'
+      - series: 'http_requests_total{namespace="school-staging",status="200",pod="school-backend-a"}'
         values: "0+999x400"
-      - series: 'http_requests_total{namespace="school-production",status="500",pod="school-backend-a"}'
+      - series: 'http_requests_total{namespace="school-staging",status="500",pod="school-backend-a"}'
         values: "0+1x400"
     alert_rule_test:
       - {eval_time: 75m, alertname: SchoolErrorBudgetFastBurn, exp_alerts: []}
@@ -32,23 +32,23 @@ tests:
   - name: an error spike that already ended does not page (both windows must agree)
     interval: 1m
     input_series:
-      - series: 'http_requests_total{namespace="school-production",status="200",pod="school-backend-a"}'
+      - series: 'http_requests_total{namespace="school-staging",status="200",pod="school-backend-a"}'
         values: "0+900x10 9000+1000x110"
-      - series: 'http_requests_total{namespace="school-production",status="500",pod="school-backend-a"}'
+      - series: 'http_requests_total{namespace="school-staging",status="500",pod="school-backend-a"}'
         values: "0+100x10 1000+0x110"
     alert_rule_test:
       - {eval_time: 60m, alertname: SchoolErrorBudgetFastBurn, exp_alerts: []}
   - name: no backend pod scraped for two minutes
     interval: 1m
     input_series:
-      - series: 'up{namespace="school-production",pod="school-backend-a",job="school/school-backend"}'
+      - series: 'up{namespace="school-staging",pod="school-backend-a",job="school/school-backend"}'
         values: "1x5 0x10"
     alert_rule_test:
       - eval_time: 12m
         alertname: SchoolBackendDown
         exp_alerts:
-          - exp_labels: {severity: critical, namespace: school-production}
+          - exp_labels: {severity: critical, namespace: school-staging}
             exp_annotations:
-              summary: "school-production: no backend pod is being scraped"
+              summary: "school-staging: no backend pod is being scraped"
               description: "Either every backend pod is down or monitoring has lost them. Check pods first, then the PodMonitor."
               runbook_url: "https://github.com/<YOUR_ORG>/devops-zero-to-hero/blob/main/docs/27-alerting/runbooks/backend-down.md"
