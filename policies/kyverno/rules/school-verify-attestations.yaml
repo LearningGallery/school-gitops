@@ -22,6 +22,10 @@ spec:
         apiVersions: [v1]
         operations: [CREATE, UPDATE]
         resources: [pods]
+  # Read the attestations from our private ECR with the pod's AWS identity (an EKS Pod Identity role with read-only
+  # access to the school-* repositories, see school-infra: enable_kyverno_ecr_access).
+  credentials:
+    providers: [amazon]
   matchImageReferences:
     - glob: "*.dkr.ecr.*.amazonaws.com/school-*"
   attestors:
