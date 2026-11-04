@@ -39,6 +39,8 @@ spec:
                 secretKeyRef:
                   name: school-app
                   key: DATABASE_URL
+            - name: NODE_EXTRA_CA_CERTS
+              value: /etc/rds-ca/global-bundle.pem # trust the AWS RDS CA so the database TLS connection is verified
           resources:
             requests: {cpu: 50m, memory: 128Mi}
             limits: {memory: 256Mi}
@@ -55,6 +57,12 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: rds-ca
+              mountPath: /etc/rds-ca
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
+        - name: rds-ca
+          configMap:
+            name: rds-ca-bundle
