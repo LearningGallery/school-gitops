@@ -80,6 +80,8 @@ spec:
                 secretKeyRef:
                   name: school-app
                   key: DATABASE_URL
+            - name: NODE_EXTRA_CA_CERTS
+              value: /etc/rds-ca/global-bundle.pem # trust the AWS RDS CA so the database TLS connection is verified
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -113,9 +115,15 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: rds-ca
+              mountPath: /etc/rds-ca
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
+        - name: rds-ca
+          configMap:
+            name: rds-ca-bundle
 ---
 # Stable Service: the Ingress backend. The Rollouts controller manages its selector, so Argo CD ignores it (ApplicationSet).
 apiVersion: v1
