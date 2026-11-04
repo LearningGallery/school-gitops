@@ -11,8 +11,6 @@ spec:
         elements:
           - {env: dev, autoSync: "true"}
           - {env: staging, autoSync: "true"}
-          # Production is never synced automatically: a human clicks Sync (or merges AND approves the sync).
-          - {env: production, autoSync: "false"}
   template:
     metadata:
       name: "school-{{ .env }}"
